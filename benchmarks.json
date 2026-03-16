@@ -1,7 +1,7 @@
 {
   "_meta": {
     "last_updated": "March 2026",
-    "sources": "Wavestone 2025 Cyber Benchmark, CYE 2025 Maturity Report, RH-ISAC 2025 CISO Benchmark, KLAS/Censinet 2024 Healthcare Study, CIS NCSR 2024, CyberSierra 2026 Targets",
+    "sources": "Wavestone 2025 Cyber Benchmark, CYE 2025 Maturity Report, RH-ISAC 2025 CISO Benchmark, KLAS/Censinet 2024 Healthcare Study, CIS NCSR 2024, CyberSierra 2026 Targets, IBM Cost of Data Breach 2024, McKinsey Cyber Maturity Survey",
     "notes": "Scores are on the 1-4 NIST CSF tier scale. To update: edit values here and copy into index.html INDUSTRY_BENCHMARKS constant. Key pattern: Recover is universally weakest (-0.4 to -0.6 vs avg), Protect tends strongest, Identify lags in most sectors."
   },
   "benchmarks": {
@@ -17,6 +17,28 @@
     "Telecommunications":       { "GV": 2.3, "ID": 2.2, "PR": 2.4, "DE": 2.3, "RS": 2.2, "RC": 1.8 },
     "Defense & Aerospace":      { "GV": 2.7, "ID": 2.5, "PR": 2.8, "DE": 2.6, "RS": 2.6, "RC": 2.1 },
     "Transportation":           { "GV": 1.9, "ID": 1.8, "PR": 2.0, "DE": 1.8, "RS": 1.9, "RC": 1.5 },
+    "Banking":                  { "GV": 2.9, "ID": 2.6, "PR": 2.8, "DE": 2.7, "RS": 2.8, "RC": 2.3 },
+    "Insurance":                { "GV": 2.6, "ID": 2.4, "PR": 2.5, "DE": 2.4, "RS": 2.5, "RC": 2.0 },
+    "Software & SaaS":          { "GV": 2.4, "ID": 2.3, "PR": 2.5, "DE": 2.4, "RS": 2.3, "RC": 1.9 },
+    "Cloud & Hosting Services": { "GV": 2.5, "ID": 2.4, "PR": 2.6, "DE": 2.5, "RS": 2.4, "RC": 2.0 },
+    "Pharmaceuticals & Life Sciences": { "GV": 2.5, "ID": 2.3, "PR": 2.5, "DE": 2.3, "RS": 2.4, "RC": 1.9 },
+    "Consulting & Professional Services": { "GV": 2.2, "ID": 2.1, "PR": 2.3, "DE": 2.1, "RS": 2.1, "RC": 1.7 },
+    "Legal Services":           { "GV": 2.0, "ID": 1.9, "PR": 2.1, "DE": 1.8, "RS": 1.9, "RC": 1.5 },
+    "Media & Entertainment":    { "GV": 1.8, "ID": 1.7, "PR": 1.9, "DE": 1.7, "RS": 1.8, "RC": 1.4 },
+    "Hospitality & Tourism":    { "GV": 1.7, "ID": 1.6, "PR": 1.8, "DE": 1.6, "RS": 1.7, "RC": 1.3 },
+    "Real Estate & Construction": { "GV": 1.7, "ID": 1.6, "PR": 1.8, "DE": 1.5, "RS": 1.6, "RC": 1.3 },
+    "Logistics & Supply Chain": { "GV": 2.0, "ID": 1.9, "PR": 2.1, "DE": 1.9, "RS": 2.0, "RC": 1.6 },
+    "Automotive":               { "GV": 2.2, "ID": 2.1, "PR": 2.3, "DE": 2.1, "RS": 2.1, "RC": 1.7 },
+    "Chemical":                 { "GV": 2.2, "ID": 2.0, "PR": 2.3, "DE": 2.0, "RS": 2.1, "RC": 1.7 },
+    "Nuclear":                  { "GV": 2.8, "ID": 2.6, "PR": 2.9, "DE": 2.7, "RS": 2.7, "RC": 2.2 },
+    "Water & Wastewater":       { "GV": 1.8, "ID": 1.7, "PR": 1.9, "DE": 1.6, "RS": 1.7, "RC": 1.3 },
+    "Mining & Natural Resources": { "GV": 1.9, "ID": 1.8, "PR": 2.0, "DE": 1.7, "RS": 1.8, "RC": 1.4 },
+    "Agriculture & Food":       { "GV": 1.5, "ID": 1.4, "PR": 1.6, "DE": 1.3, "RS": 1.4, "RC": 1.1 },
+    "Gaming & Gambling":        { "GV": 2.1, "ID": 2.0, "PR": 2.2, "DE": 2.1, "RS": 2.1, "RC": 1.6 },
+    "Managed Security Services (MSSP)": { "GV": 2.7, "ID": 2.6, "PR": 2.8, "DE": 2.8, "RS": 2.7, "RC": 2.2 },
+    "Emergency Services":       { "GV": 1.9, "ID": 1.8, "PR": 2.0, "DE": 1.8, "RS": 2.0, "RC": 1.5 },
+    "Nonprofit & NGO":          { "GV": 1.5, "ID": 1.4, "PR": 1.6, "DE": 1.3, "RS": 1.4, "RC": 1.1 },
+    "Startups & SMBs":          { "GV": 1.6, "ID": 1.5, "PR": 1.7, "DE": 1.4, "RS": 1.5, "RC": 1.2 },
     "Other":                    { "GV": 2.2, "ID": 2.1, "PR": 2.3, "DE": 2.1, "RS": 2.1, "RC": 1.7 }
   },
   "cross_industry_average":     { "GV": 2.2, "ID": 2.1, "PR": 2.3, "DE": 2.1, "RS": 2.1, "RC": 1.7 }

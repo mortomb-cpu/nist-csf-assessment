@@ -8,6 +8,23 @@
 <meta name="copyright" content="Copyright 2026 Moran Tomer. All rights reserved.">
 <title>NIST CSF 2.0 Assessment Tool — by Moran Tomer</title>
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAAAYTzSEC7riw1ZJhrwyUbCTT4KjmItAM",
+    authDomain: "nist-csf-assessment.firebaseapp.com",
+    projectId: "nist-csf-assessment",
+    storageBucket: "nist-csf-assessment.firebasestorage.app",
+    messagingSenderId: "649073645940",
+    appId: "1:649073645940:web:f29fa1900885375263f421",
+    measurementId: "G-8QDS2KR8CW"
+  };
+  firebase.initializeApp(firebaseConfig);
+  firebase.analytics();
+  const db = firebase.firestore();
+</script>
 <style>
 :root {
   --bg: #0a0e17;
@@ -454,6 +471,64 @@ body {
   .welcome-stats { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* Cloud/Share Modal */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 32px; width: 90%; max-width: 520px;
+  max-height: 80vh; overflow-y: auto;
+}
+.modal-box h3 { font-size: 18px; margin-bottom: 16px; }
+.modal-box .close-modal {
+  float: right; background: none; border: none; color: var(--text-dim);
+  font-size: 20px; cursor: pointer; padding: 0 4px;
+}
+.modal-box .close-modal:hover { color: var(--text); }
+.share-link-box {
+  display: flex; gap: 8px; margin: 16px 0;
+}
+.share-link-box input {
+  flex: 1; padding: 10px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text); font-size: 13px; outline: none;
+}
+.cloud-list { list-style: none; }
+.cloud-list li {
+  padding: 12px 16px; background: var(--surface2); border-radius: 8px;
+  margin-bottom: 8px; cursor: pointer; transition: all 0.2s;
+  border: 1px solid var(--border);
+}
+.cloud-list li:hover { border-color: var(--accent); background: rgba(59,130,246,0.05); }
+.cloud-list .cl-name { font-weight: 600; font-size: 14px; }
+.cloud-list .cl-meta { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+.cloud-list .cl-actions { float: right; display: flex; gap: 6px; }
+.cloud-list .cl-actions button {
+  background: none; border: 1px solid var(--border); color: var(--text-dim);
+  border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer;
+}
+.cloud-list .cl-actions button:hover { color: var(--text); border-color: var(--accent); }
+.cloud-list .cl-actions button.del:hover { color: var(--tier1); border-color: var(--tier1); }
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #fff; padding: 12px 24px; border-radius: 8px;
+  font-size: 14px; font-weight: 600; z-index: 2000;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2.5s forwards;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(-50%) translateY(20px); } }
+.cloud-status {
+  font-size: 11px; color: var(--text-dim); display: inline-flex;
+  align-items: center; gap: 4px;
+}
+.cloud-status.saving { color: var(--tier2); }
+.cloud-status.saved { color: var(--tier4); }
+.cloud-status.error { color: var(--tier1); }
+
 /* Print */
 @media print {
   .topnav, .cat-nav, .export-bar, .btn { display: none !important; }
@@ -478,8 +553,12 @@ body {
     <div class="topnav-progress-text" id="progressText">0 of 106 answered</div>
   </div>
   <div class="topnav-actions">
+    <button class="btn btn-secondary" id="btnCloudSave" style="display:none;" onclick="cloudSave()">&#9729; Cloud Save</button>
+    <button class="btn btn-secondary" id="btnCloudLoad" onclick="showCloudLoadModal()">&#9729; Cloud Load</button>
+    <button class="btn btn-secondary" id="btnShare" style="display:none;" onclick="shareAssessment()">&#128279; Share</button>
     <button class="btn btn-secondary" id="btnSave" style="display:none;" onclick="saveProgress()">&#128190; Save</button>
     <button class="btn btn-secondary" id="btnLoad" onclick="loadProgress()">&#128194; Load</button>
+    <span class="cloud-status" id="cloudStatus"></span>
   </div>
 </nav>
 
@@ -504,19 +583,59 @@ body {
           <label>Industry</label>
           <select id="orgIndustry">
             <option value="">Select industry...</option>
-            <option>Financial Services</option>
-            <option>Healthcare</option>
-            <option>Technology</option>
-            <option>IoT & Connected Devices</option>
-            <option>Manufacturing</option>
-            <option>Energy & Utilities</option>
-            <option>Government</option>
-            <option>Retail & E-commerce</option>
-            <option>Education</option>
-            <option>Telecommunications</option>
-            <option>Defense & Aerospace</option>
-            <option>Transportation</option>
-            <option>Other</option>
+            <optgroup label="Technology & Software">
+              <option>Technology</option>
+              <option>Software & SaaS</option>
+              <option>Cloud & Hosting Services</option>
+              <option>IoT & Connected Devices</option>
+              <option>Managed Security Services (MSSP)</option>
+              <option>Telecommunications</option>
+            </optgroup>
+            <optgroup label="Financial & Insurance">
+              <option>Financial Services</option>
+              <option>Banking</option>
+              <option>Insurance</option>
+            </optgroup>
+            <optgroup label="Healthcare & Life Sciences">
+              <option>Healthcare</option>
+              <option>Pharmaceuticals & Life Sciences</option>
+            </optgroup>
+            <optgroup label="Government & Defense">
+              <option>Government</option>
+              <option>Defense & Aerospace</option>
+              <option>Emergency Services</option>
+            </optgroup>
+            <optgroup label="Energy & Industrial">
+              <option>Energy & Utilities</option>
+              <option>Nuclear</option>
+              <option>Water & Wastewater</option>
+              <option>Manufacturing</option>
+              <option>Chemical</option>
+              <option>Mining & Natural Resources</option>
+            </optgroup>
+            <optgroup label="Transport & Logistics">
+              <option>Transportation</option>
+              <option>Logistics & Supply Chain</option>
+              <option>Automotive</option>
+            </optgroup>
+            <optgroup label="Consumer & Retail">
+              <option>Retail & E-commerce</option>
+              <option>Hospitality & Tourism</option>
+              <option>Gaming & Gambling</option>
+              <option>Media & Entertainment</option>
+            </optgroup>
+            <optgroup label="Professional Services">
+              <option>Consulting & Professional Services</option>
+              <option>Legal Services</option>
+              <option>Real Estate & Construction</option>
+            </optgroup>
+            <optgroup label="Other Sectors">
+              <option>Education</option>
+              <option>Agriculture & Food</option>
+              <option>Nonprofit & NGO</option>
+              <option>Startups & SMBs</option>
+              <option>Other</option>
+            </optgroup>
           </select>
         </div>
         <div class="form-group">
@@ -1241,6 +1360,28 @@ const INDUSTRY_BENCHMARKS = {
   "Telecommunications":        { GV: 2.3, ID: 2.2, PR: 2.4, DE: 2.3, RS: 2.2, RC: 1.8 },
   "Defense & Aerospace":       { GV: 2.7, ID: 2.5, PR: 2.8, DE: 2.6, RS: 2.6, RC: 2.1 },
   "Transportation":            { GV: 1.9, ID: 1.8, PR: 2.0, DE: 1.8, RS: 1.9, RC: 1.5 },
+  "Banking":                   { GV: 2.9, ID: 2.6, PR: 2.8, DE: 2.7, RS: 2.8, RC: 2.3 },
+  "Insurance":                 { GV: 2.6, ID: 2.4, PR: 2.5, DE: 2.4, RS: 2.5, RC: 2.0 },
+  "Software & SaaS":           { GV: 2.4, ID: 2.3, PR: 2.5, DE: 2.4, RS: 2.3, RC: 1.9 },
+  "Cloud & Hosting Services":  { GV: 2.5, ID: 2.4, PR: 2.6, DE: 2.5, RS: 2.4, RC: 2.0 },
+  "Pharmaceuticals & Life Sciences": { GV: 2.5, ID: 2.3, PR: 2.5, DE: 2.3, RS: 2.4, RC: 1.9 },
+  "Consulting & Professional Services": { GV: 2.2, ID: 2.1, PR: 2.3, DE: 2.1, RS: 2.1, RC: 1.7 },
+  "Legal Services":            { GV: 2.0, ID: 1.9, PR: 2.1, DE: 1.8, RS: 1.9, RC: 1.5 },
+  "Media & Entertainment":     { GV: 1.8, ID: 1.7, PR: 1.9, DE: 1.7, RS: 1.8, RC: 1.4 },
+  "Hospitality & Tourism":     { GV: 1.7, ID: 1.6, PR: 1.8, DE: 1.6, RS: 1.7, RC: 1.3 },
+  "Real Estate & Construction": { GV: 1.7, ID: 1.6, PR: 1.8, DE: 1.5, RS: 1.6, RC: 1.3 },
+  "Logistics & Supply Chain":  { GV: 2.0, ID: 1.9, PR: 2.1, DE: 1.9, RS: 2.0, RC: 1.6 },
+  "Automotive":                { GV: 2.2, ID: 2.1, PR: 2.3, DE: 2.1, RS: 2.1, RC: 1.7 },
+  "Chemical":                  { GV: 2.2, ID: 2.0, PR: 2.3, DE: 2.0, RS: 2.1, RC: 1.7 },
+  "Nuclear":                   { GV: 2.8, ID: 2.6, PR: 2.9, DE: 2.7, RS: 2.7, RC: 2.2 },
+  "Water & Wastewater":        { GV: 1.8, ID: 1.7, PR: 1.9, DE: 1.6, RS: 1.7, RC: 1.3 },
+  "Mining & Natural Resources": { GV: 1.9, ID: 1.8, PR: 2.0, DE: 1.7, RS: 1.8, RC: 1.4 },
+  "Agriculture & Food":        { GV: 1.5, ID: 1.4, PR: 1.6, DE: 1.3, RS: 1.4, RC: 1.1 },
+  "Gaming & Gambling":         { GV: 2.1, ID: 2.0, PR: 2.2, DE: 2.1, RS: 2.1, RC: 1.6 },
+  "Managed Security Services (MSSP)": { GV: 2.7, ID: 2.6, PR: 2.8, DE: 2.8, RS: 2.7, RC: 2.2 },
+  "Emergency Services":        { GV: 1.9, ID: 1.8, PR: 2.0, DE: 1.8, RS: 2.0, RC: 1.5 },
+  "Nonprofit & NGO":           { GV: 1.5, ID: 1.4, PR: 1.6, DE: 1.3, RS: 1.4, RC: 1.1 },
+  "Startups & SMBs":           { GV: 1.6, ID: 1.5, PR: 1.7, DE: 1.4, RS: 1.5, RC: 1.2 },
   "Other":                     { GV: 2.2, ID: 2.1, PR: 2.3, DE: 2.1, RS: 2.1, RC: 1.7 }
 };
 
@@ -1299,6 +1440,8 @@ function startAssessment() {
   navigateToCategory(0);
   document.getElementById('topProgress').style.display = 'block';
   document.getElementById('btnSave').style.display = 'inline-flex';
+  document.getElementById('btnCloudSave').style.display = 'inline-flex';
+  document.getElementById('btnShare').style.display = 'inline-flex';
   updateProgress();
 }
 
@@ -1681,6 +1824,7 @@ function renderResults() {
   // Export
   html += `
     <div class="export-bar">
+      <button class="btn btn-primary btn-lg" onclick="shareAssessment()" style="background:linear-gradient(135deg, #3b82f6, #8b5cf6);">&#128279; Share Assessment</button>
       <button class="btn btn-primary btn-lg" onclick="exportPPTX()" style="background:linear-gradient(135deg, #d97706, #ef4444);">&#128218; Export PowerPoint</button>
       <button class="btn btn-primary btn-lg" onclick="exportJSON()">&#128229; Export JSON</button>
       <button class="btn btn-secondary btn-lg" onclick="exportCSV()">&#128196; Export CSV</button>
@@ -2208,6 +2352,279 @@ function loadProgress() {
   };
   input.click();
 }
+
+// ====== FIREBASE CLOUD SAVE / LOAD / SHARE ======
+let currentDocId = null; // tracks the current cloud document ID
+
+function setCloudStatus(text, cls) {
+  const el = document.getElementById('cloudStatus');
+  el.textContent = text;
+  el.className = 'cloud-status ' + (cls || '');
+  if (cls === 'saved') setTimeout(() => { el.textContent = ''; el.className = 'cloud-status'; }, 3000);
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+async function cloudSave() {
+  if (!orgInfo.name) { alert('Start an assessment first.'); return; }
+  setCloudStatus('Saving...', 'saving');
+  try {
+    const data = {
+      orgInfo,
+      answers,
+      version: '2.0',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: currentDocId ? undefined : firebase.firestore.FieldValue.serverTimestamp()
+    };
+    // Remove undefined fields
+    Object.keys(data).forEach(k => data[k] === undefined && delete data[k]);
+
+    if (currentDocId) {
+      await db.collection('assessments').doc(currentDocId).update(data);
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      const docRef = await db.collection('assessments').add(data);
+      currentDocId = docRef.id;
+    }
+    setCloudStatus('Saved', 'saved');
+    showToast('Assessment saved to cloud');
+  } catch (err) {
+    console.error('Cloud save error:', err);
+    setCloudStatus('Save failed', 'error');
+    alert('Cloud save failed. Make sure Firestore is enabled in your Firebase console.\n\n' + err.message);
+  }
+}
+
+async function showCloudLoadModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  const box = document.createElement('div');
+  box.className = 'modal-box';
+  box.innerHTML = `
+    <button class="close-modal" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+    <h3>&#9729; Load from Cloud</h3>
+    <p style="color:var(--text-dim); font-size:13px; margin-bottom:16px;">Select a saved assessment or enter a share ID.</p>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>Load by Share ID</label>
+      <div class="share-link-box">
+        <input type="text" id="loadShareId" placeholder="Paste a share ID...">
+        <button class="btn btn-primary" onclick="loadByShareId()">Load</button>
+      </div>
+    </div>
+    <h4 style="font-size:14px; color:var(--text-dim); margin-bottom:12px;">Recent Cloud Saves</h4>
+    <ul class="cloud-list" id="cloudList">
+      <li style="text-align:center; color:var(--text-dim);">Loading...</li>
+    </ul>
+  `;
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  // Fetch recent assessments
+  try {
+    const snapshot = await db.collection('assessments')
+      .orderBy('updatedAt', 'desc')
+      .limit(20)
+      .get();
+
+    const list = document.getElementById('cloudList');
+    if (snapshot.empty) {
+      list.innerHTML = '<li style="text-align:center; color:var(--text-dim);">No saved assessments found</li>';
+      return;
+    }
+    list.innerHTML = '';
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      const li = document.createElement('li');
+      const date = d.updatedAt ? d.updatedAt.toDate().toLocaleDateString() : 'Unknown';
+      const time = d.updatedAt ? d.updatedAt.toDate().toLocaleTimeString() : '';
+      const answeredCount = d.answers ? Object.keys(d.answers).length : 0;
+      li.innerHTML = `
+        <div class="cl-actions">
+          <button onclick="event.stopPropagation(); deleteCloudSave('${doc.id}', this);" class="del">Delete</button>
+        </div>
+        <div class="cl-name">${d.orgInfo ? d.orgInfo.name : 'Unnamed'}</div>
+        <div class="cl-meta">${d.orgInfo && d.orgInfo.industry ? d.orgInfo.industry + ' | ' : ''}${answeredCount}/106 answered | ${date} ${time}</div>
+      `;
+      li.onclick = () => loadCloudAssessment(doc.id, d);
+      list.appendChild(li);
+    });
+  } catch (err) {
+    console.error('Cloud load error:', err);
+    document.getElementById('cloudList').innerHTML =
+      '<li style="color:var(--tier1);">Failed to load. Make sure Firestore is enabled.</li>';
+  }
+}
+
+function loadCloudAssessment(docId, data) {
+  answers = data.answers || {};
+  orgInfo = data.orgInfo || {};
+  currentDocId = docId;
+  document.getElementById('orgName').value = orgInfo.name || '';
+  document.getElementById('orgIndustry').value = orgInfo.industry || '';
+  document.getElementById('assessorName').value = orgInfo.assessor || '';
+  // Close modal
+  document.querySelector('.modal-overlay')?.remove();
+  startAssessment();
+  showToast('Assessment loaded from cloud');
+}
+
+async function loadByShareId() {
+  const shareId = document.getElementById('loadShareId').value.trim();
+  if (!shareId) return;
+  try {
+    // Try loading as a share document first
+    let doc = await db.collection('shares').doc(shareId).get();
+    if (doc.exists) {
+      const shareData = doc.data();
+      // Load the linked assessment or the embedded data
+      if (shareData.assessmentId) {
+        const assessDoc = await db.collection('assessments').doc(shareData.assessmentId).get();
+        if (assessDoc.exists) {
+          loadCloudAssessment(shareData.assessmentId, assessDoc.data());
+          return;
+        }
+      }
+      if (shareData.answers && shareData.orgInfo) {
+        answers = shareData.answers;
+        orgInfo = shareData.orgInfo;
+        currentDocId = null;
+        document.getElementById('orgName').value = orgInfo.name || '';
+        document.getElementById('orgIndustry').value = orgInfo.industry || '';
+        document.getElementById('assessorName').value = orgInfo.assessor || '';
+        document.querySelector('.modal-overlay')?.remove();
+        startAssessment();
+        showToast('Shared assessment loaded');
+        return;
+      }
+    }
+    // Try as direct assessment ID
+    doc = await db.collection('assessments').doc(shareId).get();
+    if (doc.exists) {
+      loadCloudAssessment(shareId, doc.data());
+      return;
+    }
+    alert('Assessment not found. Check the ID and try again.');
+  } catch (err) {
+    console.error('Load by ID error:', err);
+    alert('Failed to load: ' + err.message);
+  }
+}
+
+async function deleteCloudSave(docId, btn) {
+  if (!confirm('Delete this saved assessment from the cloud?')) return;
+  try {
+    await db.collection('assessments').doc(docId).delete();
+    btn.closest('li').remove();
+    if (currentDocId === docId) currentDocId = null;
+    showToast('Assessment deleted');
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+async function shareAssessment() {
+  if (!orgInfo.name || Object.keys(answers).length === 0) {
+    alert('Complete at least some of the assessment before sharing.');
+    return;
+  }
+
+  setCloudStatus('Creating share link...', 'saving');
+  try {
+    // Save a snapshot to the shares collection
+    const shareData = {
+      orgInfo,
+      answers,
+      version: '2.0',
+      sharedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      assessmentId: currentDocId || null
+    };
+    const shareRef = await db.collection('shares').add(shareData);
+    const shareId = shareRef.id;
+    const shareUrl = `${window.location.origin}${window.location.pathname}?share=${shareId}`;
+
+    setCloudStatus('', '');
+
+    // Show share modal
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    const box = document.createElement('div');
+    box.className = 'modal-box';
+    box.innerHTML = `
+      <button class="close-modal" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+      <h3>&#128279; Share Assessment</h3>
+      <p style="color:var(--text-dim); font-size:13px; margin-bottom:8px;">
+        Anyone with this link can view a <strong>read-only snapshot</strong> of your current assessment.
+      </p>
+      <div class="share-link-box">
+        <input type="text" id="shareLinkInput" value="${shareUrl}" readonly onclick="this.select()">
+        <button class="btn btn-primary" onclick="copyShareLink()">Copy</button>
+      </div>
+      <p style="color:var(--text-dim); font-size:12px; margin-top:8px;">
+        Share ID: <code style="color:var(--accent);">${shareId}</code>
+      </p>
+      <p style="color:var(--text-dim); font-size:11px; margin-top:12px;">
+        This is a snapshot — future changes to your assessment won't update this link.
+      </p>
+    `;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+  } catch (err) {
+    console.error('Share error:', err);
+    setCloudStatus('Share failed', 'error');
+    alert('Failed to create share link. Make sure Firestore is enabled.\n\n' + err.message);
+  }
+}
+
+function copyShareLink() {
+  const input = document.getElementById('shareLinkInput');
+  input.select();
+  navigator.clipboard.writeText(input.value).then(() => {
+    showToast('Link copied to clipboard');
+  }).catch(() => {
+    document.execCommand('copy');
+    showToast('Link copied');
+  });
+}
+
+// ====== AUTO-LOAD SHARED ASSESSMENT FROM URL ======
+window.addEventListener('DOMContentLoaded', async () => {
+  const params = new URLSearchParams(window.location.search);
+  const shareId = params.get('share');
+  if (!shareId) return;
+
+  try {
+    const doc = await db.collection('shares').doc(shareId).get();
+    if (!doc.exists) {
+      alert('Shared assessment not found. The link may have expired.');
+      return;
+    }
+    const data = doc.data();
+    answers = data.answers || {};
+    orgInfo = data.orgInfo || {};
+    currentDocId = null; // shared assessments don't link back
+    document.getElementById('orgName').value = orgInfo.name || '';
+    document.getElementById('orgIndustry').value = orgInfo.industry || '';
+    document.getElementById('assessorName').value = orgInfo.assessor || '';
+    startAssessment();
+    // Go straight to results if the assessment is substantially complete
+    if (Object.keys(answers).length > 50) {
+      showResults();
+    }
+    showToast('Shared assessment loaded');
+  } catch (err) {
+    console.error('Failed to load shared assessment:', err);
+    alert('Failed to load shared assessment: ' + err.message);
+  }
+});
 </script>
 </body>
 </html>
