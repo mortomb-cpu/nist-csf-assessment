@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NIST CSF 2.0 Assessment Tool</title>
+<meta name="author" content="Moran Tomer">
+<meta name="creator" content="Moran Tomer">
+<meta name="copyright" content="Copyright 2026 Moran Tomer. All rights reserved.">
+<title>NIST CSF 2.0 Assessment Tool — by Moran Tomer</title>
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
 :root {
@@ -376,33 +379,15 @@ body {
 }
 .rec-item .rec-text { font-size: 13px; line-height: 1.5; }
 
-/* Heatmap */
-.heatmap {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-  gap: 4px;
-}
-.heatmap-cell {
-  aspect-ratio: 1; border-radius: 6px; display: flex;
-  align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700; cursor: default;
-  position: relative;
-}
-.heatmap-cell:hover .heatmap-tooltip {
-  display: block;
-}
-.heatmap-tooltip {
-  display: none; position: absolute; bottom: 100%; left: 50%;
-  transform: translateX(-50%); background: #000; color: #fff;
-  padding: 6px 10px; border-radius: 6px; font-size: 11px;
-  white-space: nowrap; z-index: 10; margin-bottom: 4px;
-  font-weight: 400;
-}
-
 /* Export bar */
 .export-bar {
-  text-align: center; padding: 32px;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+  padding: 32px 16px;
   border-top: 1px solid var(--border);
   margin-top: 32px;
+}
+.export-bar .btn {
+  min-width: 160px; justify-content: center;
 }
 
 /* N/A option */
@@ -484,7 +469,7 @@ body {
 <nav class="topnav">
   <div class="topnav-brand">
     <span class="shield">&#128737;</span>
-    NIST CSF 2.0 Assessment
+    NIST CSF 2.0 Assessment <span style="font-weight:400; font-size:11px; color:var(--text-dim); margin-left:6px;">by Moran Tomer</span>
   </div>
   <div class="topnav-progress" id="topProgress" style="display:none;">
     <div class="topnav-progress-bar">
@@ -508,6 +493,7 @@ body {
         A guided, interactive assessment tool based on the NIST Cybersecurity Framework 2.0.
         Evaluate your organization across all 6 functions and receive a comprehensive maturity score.
       </p>
+      <p style="font-size:13px; color:var(--text-dim); margin-bottom:24px;">Developed by <strong style="color:var(--accent);">Moran Tomer</strong></p>
       <div class="welcome-form">
         <h3>Organization Details</h3>
         <div class="form-group">
@@ -521,6 +507,7 @@ body {
             <option>Financial Services</option>
             <option>Healthcare</option>
             <option>Technology</option>
+            <option>IoT & Connected Devices</option>
             <option>Manufacturing</option>
             <option>Energy & Utilities</option>
             <option>Government</option>
@@ -561,6 +548,11 @@ body {
     <div class="results" id="resultsContent"></div>
   </div>
 </div>
+
+<!-- Persistent Copyright Footer -->
+<footer style="text-align:center; padding:16px; color:var(--text-dim); font-size:11px; border-top:1px solid var(--border); background:var(--surface);">
+  &copy; 2026 Moran Tomer. All rights reserved. | NIST CSF 2.0 Assessment Tool
+</footer>
 
 <script>
 // ====== NIST CSF 2.0 DATA — Plain Language Edition ======
@@ -1231,25 +1223,29 @@ const TIER_INFO = [
 ];
 
 // ====== INDUSTRY BENCHMARKS ======
-// Based on aggregated data from public cybersecurity maturity reports, ISAC surveys,
-// and industry assessments (2024-2025). Scores are on the 1-4 tier scale per CSF function.
+// Calibrated from: Wavestone 2025 Cyber Benchmark (170+ orgs), CYE 2025 Maturity Report,
+// RH-ISAC 2025 CISO Benchmark, KLAS/Censinet 2024 Healthcare Study, CIS NCSR 2024 (4,151 orgs),
+// CyberSierra 2026 Targets, NIST CSF Adoption Report 2025. Scores on the 1-4 tier scale.
+const BENCHMARK_DATE = "March 2026";
+const BENCHMARK_SOURCES = "Wavestone, CYE, RH-ISAC, KLAS/Censinet, CIS NCSR, CyberSierra (2024-2026)";
 const INDUSTRY_BENCHMARKS = {
-  "Financial Services":      { GV: 3.2, ID: 3.1, PR: 3.3, DE: 3.1, RS: 3.0, RC: 2.9 },
-  "Healthcare":              { GV: 2.3, ID: 2.2, PR: 2.4, DE: 2.1, RS: 2.0, RC: 1.9 },
-  "Technology":              { GV: 3.0, ID: 3.1, PR: 3.2, DE: 3.3, RS: 3.0, RC: 2.8 },
-  "Manufacturing":           { GV: 2.1, ID: 2.0, PR: 2.2, DE: 1.9, RS: 1.8, RC: 1.8 },
-  "Energy & Utilities":      { GV: 2.7, ID: 2.6, PR: 2.8, DE: 2.5, RS: 2.5, RC: 2.4 },
-  "Government":              { GV: 2.8, ID: 2.7, PR: 2.9, DE: 2.6, RS: 2.5, RC: 2.5 },
-  "Retail & E-commerce":     { GV: 2.2, ID: 2.1, PR: 2.4, DE: 2.2, RS: 2.0, RC: 1.9 },
-  "Education":               { GV: 1.9, ID: 1.8, PR: 2.0, DE: 1.7, RS: 1.6, RC: 1.5 },
-  "Telecommunications":      { GV: 2.9, ID: 2.8, PR: 3.0, DE: 2.9, RS: 2.7, RC: 2.6 },
-  "Defense & Aerospace":     { GV: 3.4, ID: 3.3, PR: 3.5, DE: 3.3, RS: 3.2, RC: 3.1 },
-  "Transportation":          { GV: 2.3, ID: 2.2, PR: 2.3, DE: 2.0, RS: 1.9, RC: 1.9 },
-  "Other":                   { GV: 2.4, ID: 2.3, PR: 2.5, DE: 2.2, RS: 2.1, RC: 2.0 }
+  "Financial Services":        { GV: 2.8, ID: 2.5, PR: 2.7, DE: 2.6, RS: 2.7, RC: 2.2 },
+  "Healthcare":                { GV: 2.1, ID: 1.9, PR: 2.2, DE: 2.0, RS: 2.3, RC: 1.7 },
+  "Technology":                { GV: 2.5, ID: 2.4, PR: 2.6, DE: 2.5, RS: 2.4, RC: 2.0 },
+  "IoT & Connected Devices":   { GV: 2.3, ID: 2.2, PR: 2.4, DE: 2.3, RS: 2.2, RC: 1.8 },
+  "Manufacturing":             { GV: 2.1, ID: 2.0, PR: 2.2, DE: 1.9, RS: 2.0, RC: 1.6 },
+  "Energy & Utilities":        { GV: 2.4, ID: 2.2, PR: 2.5, DE: 2.3, RS: 2.3, RC: 1.9 },
+  "Government":                { GV: 2.0, ID: 1.8, PR: 2.1, DE: 1.9, RS: 2.0, RC: 1.5 },
+  "Retail & E-commerce":       { GV: 2.0, ID: 1.9, PR: 2.1, DE: 2.0, RS: 2.1, RC: 1.6 },
+  "Education":                 { GV: 1.6, ID: 1.5, PR: 1.7, DE: 1.4, RS: 1.5, RC: 1.2 },
+  "Telecommunications":        { GV: 2.3, ID: 2.2, PR: 2.4, DE: 2.3, RS: 2.2, RC: 1.8 },
+  "Defense & Aerospace":       { GV: 2.7, ID: 2.5, PR: 2.8, DE: 2.6, RS: 2.6, RC: 2.1 },
+  "Transportation":            { GV: 1.9, ID: 1.8, PR: 2.0, DE: 1.8, RS: 1.9, RC: 1.5 },
+  "Other":                     { GV: 2.2, ID: 2.1, PR: 2.3, DE: 2.1, RS: 2.1, RC: 1.7 }
 };
 
 // Cross-industry average (all sectors combined)
-const CROSS_INDUSTRY_AVG = { GV: 2.6, ID: 2.5, PR: 2.7, DE: 2.5, RS: 2.4, RC: 2.3 };
+const CROSS_INDUSTRY_AVG = { GV: 2.2, ID: 2.1, PR: 2.3, DE: 2.1, RS: 2.1, RC: 1.7 };
 
 function getIndustryBenchmark() {
   const ind = orgInfo.industry;
@@ -1535,6 +1531,7 @@ function renderResults() {
       <h1>Assessment Results</h1>
       <div class="org-name">${orgInfo.name}${orgInfo.industry ? ' - ' + orgInfo.industry : ''}</div>
       <div class="date">Assessed: ${orgInfo.date}${orgInfo.assessor ? ' by ' + orgInfo.assessor : ''} | NIST CSF 2.0</div>
+      <div style="font-size:11px; color:var(--text-dim); margin-top:6px;">Developed by Moran Tomer &mdash; All rights reserved</div>
     </div>
     <div class="results-grid">`;
 
@@ -1568,6 +1565,7 @@ function renderResults() {
 
   html += `<div class="result-card">
     <h3>&#128202; Function Scores vs. ${indLabel} Average</h3>
+    <div style="font-size:11px; color:var(--text-dim); margin-bottom:8px;">Benchmark data as of ${BENCHMARK_DATE} &mdash; Sources: ${BENCHMARK_SOURCES}</div>
     <div class="bench-legend">
       <span><span class="dot" style="background:var(--accent);"></span> Your Score</span>
       <span><span class="dot" style="background:#888; opacity:0.5;"></span> ${indLabel} Average</span>
@@ -1644,40 +1642,6 @@ function renderResults() {
   });
   html += `</tbody></table></div>`;
 
-  // Heatmap
-  html += `<div class="result-card full-width">
-    <h3>&#128293; Subcategory Heatmap</h3>
-    <div style="margin-bottom:12px; display:flex; gap:16px; font-size:12px; color:var(--text-dim);">
-      <span><span style="display:inline-block;width:12px;height:12px;background:var(--tier1);border-radius:3px;vertical-align:middle;"></span> Tier 1</span>
-      <span><span style="display:inline-block;width:12px;height:12px;background:var(--tier2);border-radius:3px;vertical-align:middle;"></span> Tier 2</span>
-      <span><span style="display:inline-block;width:12px;height:12px;background:var(--tier3);border-radius:3px;vertical-align:middle;"></span> Tier 3</span>
-      <span><span style="display:inline-block;width:12px;height:12px;background:var(--tier4);border-radius:3px;vertical-align:middle;"></span> Tier 4</span>
-      <span><span style="display:inline-block;width:12px;height:12px;background:var(--surface2);border-radius:3px;vertical-align:middle;"></span> Not Assessed</span>
-    </div>`;
-  CSF_DATA.forEach(fn => {
-    html += `<div style="margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:600;color:${fn.color};margin-bottom:6px;">${fn.name}</div>
-      <div class="heatmap">`;
-    fn.categories.forEach(cat => {
-      cat.subs.forEach(sub => {
-        const val = answers[sub.id];
-        let bg = 'var(--surface2)';
-        let tc = 'var(--text-dim)';
-        if (val === 0) { bg = 'var(--border)'; tc = 'var(--text-dim)'; }
-        else if (val === 1) { bg = 'rgba(239,68,68,0.3)'; tc = 'var(--tier1)'; }
-        else if (val === 2) { bg = 'rgba(245,158,11,0.3)'; tc = 'var(--tier2)'; }
-        else if (val === 3) { bg = 'rgba(59,130,246,0.3)'; tc = 'var(--tier3)'; }
-        else if (val === 4) { bg = 'rgba(16,185,129,0.3)'; tc = 'var(--tier4)'; }
-        html += `<div class="heatmap-cell" style="background:${bg};color:${tc};">
-          ${val !== undefined ? (val === 0 ? 'N/A' : val) : '?'}
-          <div class="heatmap-tooltip">${sub.id}: ${sub.text.substring(0, 80)}${sub.text.length > 80 ? '...' : ''}</div>
-        </div>`;
-      });
-    });
-    html += `</div></div>`;
-  });
-  html += `</div>`;
-
   // Recommendations
   html += `<div class="result-card full-width">
     <h3>&#128161; Key Recommendations</h3>`;
@@ -1718,14 +1682,13 @@ function renderResults() {
   html += `
     <div class="export-bar">
       <button class="btn btn-primary btn-lg" onclick="exportPPTX()" style="background:linear-gradient(135deg, #d97706, #ef4444);">&#128218; Export PowerPoint</button>
-      &nbsp;&nbsp;
       <button class="btn btn-primary btn-lg" onclick="exportJSON()">&#128229; Export JSON</button>
-      &nbsp;&nbsp;
       <button class="btn btn-secondary btn-lg" onclick="exportCSV()">&#128196; Export CSV</button>
-      &nbsp;&nbsp;
       <button class="btn btn-secondary btn-lg" onclick="window.print()">&#128424; Print</button>
-      &nbsp;&nbsp;
       <button class="btn btn-secondary btn-lg" onclick="backToAssessment()">&#9998; Edit Answers</button>
+    </div>
+    <div style="text-align:center; padding:24px 16px 40px; color:var(--text-dim); font-size:12px; border-top:1px solid var(--border); margin-top:16px;">
+      &copy; 2026 Moran Tomer. All rights reserved. This assessment tool and its contents may not be reproduced or distributed without permission.
     </div>`;
 
   html += `</div>`;
@@ -1947,8 +1910,10 @@ function exportCSV() {
 function exportPPTX() {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE'; // 13.33 x 7.5 inches
-  pptx.author = orgInfo.assessor || 'NIST CSF Assessment Tool';
+  pptx.author = 'Moran Tomer';
+  pptx.company = 'Moran Tomer';
   pptx.title = `NIST CSF 2.0 Assessment - ${orgInfo.name}`;
+  pptx.subject = 'NIST CSF 2.0 Assessment Report - Developed by Moran Tomer';
 
   const overall = calcOverallScore();
   const bench = getIndustryBenchmark();
@@ -1974,6 +1939,7 @@ function exportPPTX() {
 
   function addBg(slide) {
     slide.background = { color: BG };
+    slide.addText('\u00A9 2026 Moran Tomer', { x: 0.3, y: 7.1, w: 4, h: 0.3, fontSize: 8, fontFace: 'Segoe UI', color: '555555', italic: true });
   }
 
   // ---- SLIDE 1: Title ----
@@ -1986,7 +1952,9 @@ function exportPPTX() {
     { text: '\n' },
     { text: `Assessed: ${orgInfo.date}${orgInfo.assessor ? ' by ' + orgInfo.assessor : ''}`, options: { fontSize: 14, color: DIM } }
   ], { x: 0.8, y: 4.5, w: 11.7, h: 1.2, fontFace: 'Segoe UI', align: 'center' });
-  slide.addText('Based on NIST Cybersecurity Framework 2.0  |  106 Subcategories  |  6 Functions', { x: 0.8, y: 6.2, w: 11.7, h: 0.5, fontSize: 11, fontFace: 'Segoe UI', color: DIM, align: 'center' });
+  slide.addText('Based on NIST Cybersecurity Framework 2.0  |  106 Subcategories  |  6 Functions', { x: 0.8, y: 5.8, w: 11.7, h: 0.5, fontSize: 11, fontFace: 'Segoe UI', color: DIM, align: 'center' });
+  slide.addText('Developed by Moran Tomer', { x: 0.8, y: 6.3, w: 11.7, h: 0.4, fontSize: 13, fontFace: 'Segoe UI', color: ACCENT, bold: true, align: 'center' });
+  slide.addText('\u00A9 2026 Moran Tomer. All rights reserved.', { x: 0.8, y: 6.8, w: 11.7, h: 0.3, fontSize: 9, fontFace: 'Segoe UI', color: DIM, align: 'center' });
 
   // ---- SLIDE 2: Overall Score & Summary ----
   slide = pptx.addSlide();
