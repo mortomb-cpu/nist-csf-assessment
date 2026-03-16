@@ -529,6 +529,59 @@ body {
 .cloud-status.saved { color: var(--tier4); }
 .cloud-status.error { color: var(--tier1); }
 
+/* Collaboration */
+.collab-bar {
+  position: fixed; top: 56px; left: 0; right: 0; z-index: 99;
+  background: rgba(59, 130, 246, 0.1); border-bottom: 1px solid var(--accent);
+  padding: 6px 24px; font-size: 12px; color: var(--text);
+  align-items: center; gap: 12px;
+  display: none;
+}
+.collab-bar.active { display: flex; }
+.collab-bar .collab-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--tier4);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.collab-bar .collab-session-id {
+  font-family: 'Courier New', monospace; color: var(--accent); font-weight: 700;
+}
+.collab-bar .collab-users {
+  margin-left: auto; display: flex; align-items: center; gap: 6px;
+}
+.collab-avatar {
+  width: 24px; height: 24px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-size: 11px;
+  font-weight: 700; color: #fff; border: 2px solid var(--surface);
+}
+.collab-avatar-stack { display: flex; margin-left: -6px; }
+.collab-avatar-stack:first-child { margin-left: 0; }
+body.in-session .main { padding-top: 86px; }
+body.in-session .assessment-sidebar { top: 86px; }
+.collab-badge {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+  border-radius: 10px; font-size: 10px; font-weight: 700;
+  background: rgba(59,130,246,0.15); color: var(--accent);
+}
+.welcome-collab {
+  margin-top: 24px; width: 100%; max-width: 480px;
+  display: flex; gap: 8px;
+}
+.welcome-collab .btn { flex: 1; }
+.collab-join-form {
+  margin-top: 12px; display: none; width: 100%; max-width: 480px;
+}
+.collab-join-form.show { display: block; }
+.collab-join-form .share-link-box { margin: 0; }
+.answer-flash {
+  animation: answerFlash 0.6s ease;
+}
+@keyframes answerFlash {
+  0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.4); }
+  50% { box-shadow: 0 0 12px 4px rgba(59,130,246,0.3); }
+  100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+}
+
 /* Print */
 @media print {
   .topnav, .cat-nav, .export-bar, .btn { display: none !important; }
@@ -561,6 +614,19 @@ body {
     <span class="cloud-status" id="cloudStatus"></span>
   </div>
 </nav>
+
+<!-- Collaboration Bar -->
+<div class="collab-bar" id="collabBar">
+  <span class="collab-dot"></span>
+  <span>Live Session:</span>
+  <span class="collab-session-id" id="collabSessionId"></span>
+  <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="copySessionLink()">Copy Link</button>
+  <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="leaveSession()">Leave</button>
+  <div class="collab-users">
+    <span id="collabUserCount" style="font-size:11px; color:var(--text-dim);"></span>
+    <div id="collabAvatars" style="display:flex;"></div>
+  </div>
+</div>
 
 <div class="main">
   <!-- Welcome Screen -->
@@ -642,14 +708,28 @@ body {
           <label>Assessor Name</label>
           <input type="text" id="assessorName" placeholder="Your name">
         </div>
-        <button class="btn btn-primary btn-lg" style="width:100%; margin-top:8px;" onclick="startAssessment()">
-          Begin Assessment &#8594;
-        </button>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="btn btn-primary btn-lg" style="flex:2;" onclick="startAssessment()">
+            Begin Assessment &#8594;
+          </button>
+          <button class="btn btn-primary btn-lg" style="flex:1; background:linear-gradient(135deg, #3b82f6, #8b5cf6);" onclick="startCollabSession()">
+            &#128101; Team
+          </button>
+        </div>
       </div>
       <div class="welcome-stats">
         <div class="welcome-stat"><div class="num">6</div><div class="label">Functions</div></div>
         <div class="welcome-stat"><div class="num">22</div><div class="label">Categories</div></div>
         <div class="welcome-stat"><div class="num">106</div><div class="label">Subcategories</div></div>
+      </div>
+      <div class="welcome-collab">
+        <button class="btn btn-secondary btn-lg" onclick="showJoinSession()" style="border-color:var(--accent); color:var(--accent);">&#128101; Join Session</button>
+      </div>
+      <div class="collab-join-form" id="joinSessionForm">
+        <div class="share-link-box">
+          <input type="text" id="joinSessionId" placeholder="Paste session ID or link...">
+          <button class="btn btn-primary" onclick="joinSessionFromInput()">Join</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1594,6 +1674,11 @@ function selectTier(subId, tier, el) {
   const answeredInCat = cat.subs.filter(s => answers[s.id] !== undefined).length;
   const navProgress = document.querySelector('.cat-progress');
   if (navProgress) navProgress.textContent = `${answeredInCat} of ${cat.subs.length} answered in this category`;
+
+  // Sync to collaborative session
+  if (collabSessionId) {
+    syncAnswerToSession(subId, tier);
+  }
 }
 
 function getCurrentGlobalIdx() {
@@ -2595,9 +2680,287 @@ function copyShareLink() {
   });
 }
 
+// ====== COLLABORATIVE SESSIONS ======
+let collabSessionId = null;
+let collabUnsubscribe = null;   // Firestore listener unsubscribe
+let collabPresenceRef = null;   // Our presence document
+let collabUserName = '';
+let suppressRemoteUpdate = false; // Prevent echo when we write
+
+const COLLAB_COLORS = ['#3b82f6','#8b5cf6','#ef4444','#10b981','#f59e0b','#06b6d4','#ec4899','#f97316'];
+
+function getCollabColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return COLLAB_COLORS[Math.abs(hash) % COLLAB_COLORS.length];
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  return name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+async function startCollabSession() {
+  const name = document.getElementById('orgName').value.trim();
+  if (!name) { document.getElementById('orgName').focus(); return; }
+
+  collabUserName = document.getElementById('assessorName').value.trim() || 'Anonymous';
+  orgInfo = {
+    name,
+    industry: document.getElementById('orgIndustry').value,
+    assessor: collabUserName,
+    date: new Date().toISOString().split('T')[0]
+  };
+
+  setCloudStatus('Creating session...', 'saving');
+  try {
+    // Create the session document
+    const sessionRef = await db.collection('sessions').add({
+      orgInfo,
+      answers: {},
+      version: '2.0',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    collabSessionId = sessionRef.id;
+
+    // Join the session
+    await joinSession(collabSessionId);
+    setCloudStatus('', '');
+    showToast('Collaborative session started — share the link with your team');
+  } catch (err) {
+    console.error('Start session error:', err);
+    setCloudStatus('Failed', 'error');
+    alert('Failed to create session: ' + err.message);
+  }
+}
+
+function showJoinSession() {
+  const form = document.getElementById('joinSessionForm');
+  form.classList.toggle('show');
+  if (form.classList.contains('show')) {
+    document.getElementById('joinSessionId').focus();
+  }
+}
+
+function joinSessionFromInput() {
+  let input = document.getElementById('joinSessionId').value.trim();
+  if (!input) return;
+  // Extract session ID from URL if pasted
+  const urlMatch = input.match(/[?&]session=([a-zA-Z0-9]+)/);
+  if (urlMatch) input = urlMatch[1];
+  // Also handle if they just paste the ID
+  collabUserName = document.getElementById('assessorName').value.trim() || 'Anonymous';
+  joinSession(input);
+}
+
+async function joinSession(sessionId) {
+  try {
+    // Fetch current session data
+    const sessionDoc = await db.collection('sessions').doc(sessionId).get();
+    if (!sessionDoc.exists) {
+      alert('Session not found. Check the ID and try again.');
+      return;
+    }
+
+    const data = sessionDoc.data();
+    collabSessionId = sessionId;
+    answers = data.answers || {};
+    orgInfo = data.orgInfo || {};
+
+    // Fill form fields
+    document.getElementById('orgName').value = orgInfo.name || '';
+    document.getElementById('orgIndustry').value = orgInfo.industry || '';
+    if (!document.getElementById('assessorName').value.trim()) {
+      document.getElementById('assessorName').value = collabUserName;
+    }
+
+    // Start the assessment UI
+    showScreen('screenAssessment');
+    buildSidebar();
+    navigateToCategory(0);
+    document.getElementById('topProgress').style.display = 'block';
+    document.getElementById('btnSave').style.display = 'inline-flex';
+    document.getElementById('btnCloudSave').style.display = 'inline-flex';
+    document.getElementById('btnShare').style.display = 'inline-flex';
+    updateProgress();
+    updateSidebar();
+
+    // Show collab bar
+    document.body.classList.add('in-session');
+    document.getElementById('collabBar').classList.add('active');
+    document.getElementById('collabSessionId').textContent = sessionId.slice(0, 8) + '...';
+
+    // Register presence
+    await registerPresence(sessionId);
+
+    // Start real-time listener
+    startSessionListener(sessionId);
+
+    showToast('Joined collaborative session');
+  } catch (err) {
+    console.error('Join session error:', err);
+    alert('Failed to join session: ' + err.message);
+  }
+}
+
+async function registerPresence(sessionId) {
+  const presenceData = {
+    name: collabUserName,
+    color: getCollabColor(collabUserName),
+    joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  collabPresenceRef = db.collection('sessions').doc(sessionId).collection('presence').doc();
+  await collabPresenceRef.set(presenceData);
+
+  // Update presence periodically
+  setInterval(async () => {
+    if (collabPresenceRef) {
+      try {
+        await collabPresenceRef.update({ lastSeen: firebase.firestore.FieldValue.serverTimestamp() });
+      } catch (e) { /* ignore */ }
+    }
+  }, 30000);
+
+  // Listen for presence changes
+  db.collection('sessions').doc(sessionId).collection('presence')
+    .onSnapshot(snapshot => {
+      const now = Date.now();
+      const users = [];
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        // Only show users seen in last 2 minutes
+        const lastSeen = d.lastSeen ? d.lastSeen.toDate().getTime() : 0;
+        if (now - lastSeen < 120000 || !d.lastSeen) {
+          users.push(d);
+        }
+      });
+      updateCollabUsers(users);
+    });
+}
+
+function updateCollabUsers(users) {
+  document.getElementById('collabUserCount').textContent = `${users.length} online`;
+  const avatarsEl = document.getElementById('collabAvatars');
+  avatarsEl.innerHTML = users.slice(0, 8).map(u =>
+    `<div class="collab-avatar collab-avatar-stack" style="background:${u.color}" title="${u.name}">${getInitials(u.name)}</div>`
+  ).join('');
+}
+
+function startSessionListener(sessionId) {
+  if (collabUnsubscribe) collabUnsubscribe();
+
+  collabUnsubscribe = db.collection('sessions').doc(sessionId)
+    .onSnapshot(snapshot => {
+      if (!snapshot.exists || suppressRemoteUpdate) return;
+      const data = snapshot.data();
+      const remoteAnswers = data.answers || {};
+
+      // Find new/changed answers from remote
+      let changed = false;
+      Object.keys(remoteAnswers).forEach(subId => {
+        if (answers[subId] !== remoteAnswers[subId]) {
+          answers[subId] = remoteAnswers[subId];
+          changed = true;
+          // Update the UI for this question if it's currently visible
+          updateQuestionUI(subId, remoteAnswers[subId]);
+        }
+      });
+
+      if (changed) {
+        updateProgress();
+        updateSidebar();
+        // Update nav count
+        try {
+          const currentGlobalIdx = getCurrentGlobalIdx();
+          const { cat } = allCategories[currentGlobalIdx];
+          const answeredInCat = cat.subs.filter(s => answers[s.id] !== undefined).length;
+          const navProgress = document.querySelector('.cat-progress');
+          if (navProgress) navProgress.textContent = `${answeredInCat} of ${cat.subs.length} answered in this category`;
+        } catch (e) { /* ignore if not on assessment screen */ }
+      }
+    });
+}
+
+function updateQuestionUI(subId, tier) {
+  const card = document.getElementById(`qcard_${subId}`);
+  if (!card) return; // Not currently visible
+
+  card.classList.add('answered', 'answer-flash');
+  setTimeout(() => card.classList.remove('answer-flash'), 700);
+
+  card.querySelectorAll('.tier-option').forEach(o => o.classList.remove('selected'));
+  if (tier === 0) {
+    const naOpt = card.querySelector('.na-option');
+    if (naOpt) naOpt.classList.add('selected');
+  } else if (tier >= 1 && tier <= 4) {
+    const opts = card.querySelectorAll('.tier-option:not(.na-option)');
+    if (opts[tier - 1]) opts[tier - 1].classList.add('selected');
+  }
+}
+
+async function syncAnswerToSession(subId, tier) {
+  if (!collabSessionId) return;
+  suppressRemoteUpdate = true;
+  try {
+    await db.collection('sessions').doc(collabSessionId).update({
+      [`answers.${subId}`]: tier,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (err) {
+    console.error('Sync answer error:', err);
+  }
+  // Small delay before re-enabling listener to avoid echo
+  setTimeout(() => { suppressRemoteUpdate = false; }, 500);
+}
+
+function copySessionLink() {
+  const url = `${window.location.origin}${window.location.pathname}?session=${collabSessionId}`;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Session link copied — share with your team');
+  }).catch(() => {
+    // Fallback
+    const input = document.createElement('input');
+    input.value = url;
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand('copy');
+    input.remove();
+    showToast('Session link copied');
+  });
+}
+
+async function leaveSession() {
+  if (collabUnsubscribe) { collabUnsubscribe(); collabUnsubscribe = null; }
+  if (collabPresenceRef) {
+    try { await collabPresenceRef.delete(); } catch (e) { /* ignore */ }
+    collabPresenceRef = null;
+  }
+  collabSessionId = null;
+  document.body.classList.remove('in-session');
+  document.getElementById('collabBar').classList.remove('active');
+  showToast('Left collaborative session');
+}
+
 // ====== AUTO-LOAD SHARED ASSESSMENT FROM URL ======
 window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
+
+  // Check for collaborative session link
+  const sessionId = params.get('session');
+  if (sessionId) {
+    // Prompt for name before joining
+    const userName = prompt('Enter your name to join this session:');
+    if (userName) {
+      collabUserName = userName;
+      document.getElementById('assessorName').value = userName;
+      await joinSession(sessionId);
+    }
+    return;
+  }
+
+  // Check for read-only share link
   const shareId = params.get('share');
   if (!shareId) return;
 
@@ -2610,12 +2973,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     const data = doc.data();
     answers = data.answers || {};
     orgInfo = data.orgInfo || {};
-    currentDocId = null; // shared assessments don't link back
+    currentDocId = null;
     document.getElementById('orgName').value = orgInfo.name || '';
     document.getElementById('orgIndustry').value = orgInfo.industry || '';
     document.getElementById('assessorName').value = orgInfo.assessor || '';
     startAssessment();
-    // Go straight to results if the assessment is substantially complete
     if (Object.keys(answers).length > 50) {
       showResults();
     }
